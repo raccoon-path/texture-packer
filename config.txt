@@ -1,0 +1,47 @@
+# texture batch tool config example
+# control character uses:
+#">" as delimiter between source and destination, e.q: source_name > destination_name or _texture_suffix > challel list to pack
+#":" as delimiter between texture_name and channels, e.q: _source_suffix:r or _src_suffix:rgb
+#"|" as list delimiter a|b|c = ["a","b","c"], used for channel packing sequences r|g|b|a or rg|b or r|rg|a
+#"[","]" for section as in ini file
+# pack sequense: target_texture > _suffix:x | _other_suffix:x |... where x - channel name. Max 4 channels awailable (rgba)
+# one line - one output texture
+# possible lines: 
+#   _orm > _ao:r | _roughness:r | _metallic:r 
+#       produces "texname_orm" with 3 channel (r from r channel of "texname_ao", g from r channel "texname_roughness" and b from r channel of "texname_metallic")
+#   _normal > _normal:rg*b
+#       produces "texname_normal" with inverted g channel from "texname_normal"
+#   _albedo_w_alpha: _albedo:rgb | _alpha:r 
+#       produces "texname_albedo_w_alpha" from r, g and b channels from "texname_albedo" and r channel of "texname_alpha")
+# "*" character after channel inverts it (e.q. _normal > _normal:rg*b inverts green channel for mytexture_normal.png if tool found it)
+
+[settings]
+src_dir > test-data/src
+dest_dir > test-data/dest
+save_relativepaths > false
+lowercase_names > true
+output_format > png
+
+[filters]
+.png
+.jpg
+.tga
+
+[map suffixes]
+#Only the following suffixes are scanned
+#Converting input texture suffixes to a uniform look if needed
+_color > _albedo
+_base_color > _albedo
+_ambient_occlusion > _ao
+_albedo
+_normal
+_roughness
+_metallic
+_ao
+_height
+
+
+[pack]
+_orm > _ao:r | _roughness:r | _metallic:r
+_normal>_normal:rg*b
+_albedo>_albedo:rgb
