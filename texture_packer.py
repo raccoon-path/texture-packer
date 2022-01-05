@@ -248,7 +248,6 @@ class Config:
         
 
 class TexturePacker:
-    MAGIC_16_TO_8 = 8192*4 #obtained experimentally :)
     IMG_MODES_MAP = {
         1:"L",
         3:"RGB",
@@ -256,16 +255,9 @@ class TexturePacker:
     }
     def __init__(self) -> None:
         pass
-    
     def convert_mode_i_to_l(self, img:Image)->Image:
-        '''
-        Workaround for: https://github.com/python-pillow/Pillow/issues/3011
-        Manual convert 16bit gray image to 8bit gray through numpy
-        '''
-        arr = np.array(img)
-        max16val = np.iinfo(arr.dtype).max
-        data = 255 * arr.astype(np.float64) /(max16val/self.MAGIC_16_TO_8) #some weird coefficient (although it shouldn't be here) to convert PIL`s (I) int16(32?) to (L) uint8 
-        return Img.fromarray(data.astype(np.uint8))
+        array = np.uint8(np.array(img) / 256)
+        return Img.fromarray(array)
 
     def load_image(self, path:str)->Image:
         try:
@@ -354,11 +346,12 @@ class TexturePacker:
 
     def pack_textures(self, config:Config):
         
-        
         src_dir = Path(config.src_dir).resolve()
         target_dir = Path(config.dest_dir).resolve()
+        dest_is_src = src_dir == target_dir
+        
         if not src_dir.exists():
-            print("Directory <"+str(src_dir)+"> does not exists")
+            print("Src directory <"+str(src_dir)+"> does not exists")
             exit(1)
         
         src_files = [fl for fl in src_dir.iterdir() if fl.suffix.lower() in config.extensions]
@@ -371,16 +364,26 @@ class TexturePacker:
             t_dir = target_dir.joinpath(grp_name).parent
             if not t_dir.exists():
                 print("Directory <"+str(t_dir)+"> does not exists, create it..")
-                #t_dir.mkdir(parents=True)
+                t_dir.mkdir(parents=True)
             
             #save packed textures
             for tex_suffix in tex_lookup:
-                save_path = str(target_dir.joinpath(grp_name+tex_suffix+"."+config.output_format).resolve())
+                save_path = target_dir.joinpath(grp_name+tex_suffix+"."+config.output_format).resolve()
+                
+                #prevent silent overwrite sources
+                if dest_is_src and save_path.exists():
+                    print("OVERWRITE SOURCE FILE: <"+str(save_path)+"> ?")
+                    print("[Y] [ENTER] to overwrite") 
+                    answ = input()   
+                    if answ.lower() !="y":
+                        print("Cancel")
+                        continue
+                #lowercase names on save
                 if config.lowercase_names:
-                    save_path = save_path.lower()
+                    save_path = str(save_path).lower()
                 
                 tex_lookup[tex_suffix].save(save_path,config.output_format) #<---- SAVE FILES HERE
-                print("SAVE file: "+str(save_path))
+                print("Save file: "+str(save_path))
 
          
 
