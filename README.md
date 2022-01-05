@@ -2,7 +2,7 @@
 Texture channel packer tool for automate creating material maps for game engines
 
 ## Problem
-If in Substance designer/painter you might customize channel layout and format for every output texture, then images, downloaded from Textures.com, TextureHaven and other services has various naming, channel layout (orm textures, separate ao, roughness, metallic, height (8 or 16-bits) textures, height in the alpha channel of albedo or in normal texture, DX normals, GL normals ... hundreds of variants). It takes a lot of time to manually create the necessary (for specified game engine) texture maps from all of this.
+In Substance designer/painter you might customize channel layout and format for every output texture, but images, downloaded from Textures.com, TextureHaven and other services has various naming, channel layout (orm textures, separate ao, roughness, metallic, height (8 or 16-bits) textures, height in the alpha channel of albedo or in normal texture, DX normals, GL normals ... tens of variants). It takes a lot of time to manually create the necessary (for specified game engine) texture maps from all of this.
 
 ### Situation:
 <table>
@@ -41,7 +41,7 @@ If in Substance designer/painter you might customize channel layout and format f
     <td>
     Where:<br>
     _GL__normal is _DX_normal with inverted green channel<br>
-    _Roughness is inverted _smoothness (welcome to Unity engine)<br>
+    _Smoothnes is inverted _Roughness (welcome to Unity engine)<br>
     _Orm is compound map with channels (R  = _Ambient_Occluion, G = _Roughness, B = _Metallic
     </td>
   </tr>
@@ -51,19 +51,21 @@ If in Substance designer/painter you might customize channel layout and format f
 The texture packer will create everything you need in batch mode, based on the names and suffixes of the images
 
 ## How it works
+Tl. dr, like this: scan files in src_dir -> remap suffixes ->group by [group name] and suffixes -> pack -> save to dest_dir
+![Scheme](./_assets/Scheme.webp)
 ### Concepts
-There are 3 parts in the file name: group, suffix, extension.
+There are 3 parts in the file name: group name, suffix, extension.
 
-For: __MyTexture_Normal.png__
+For: __tex1_Normal.png__
 | Group name | Suffix | Extension |
 |---|---|---|
-| MyTexture | _Normal | .png |
+| tex1 | _Normal | .png |
 
 > In the config.txt you may be described all suffixes and file extensions, will scanned by packer.
 
 1. The texture packer gets a list of files with the required extension and suffixes.
     1. Converts texture suffixes to a uniform look (as described in the config)
-    1. Groups them by name and suffix.
+    1. Groups them by [group name] and suffix.
 2. Creates new textures from them with the desired channel layout for each group. 
 
 The output is textures with the same group name and a new suffix that corresponds to the channel layout (as described in the config)
@@ -73,7 +75,7 @@ Config is a simple txt file with sections (as in ini file).
 
 ### Settings section
  * "#" - comment as in python
- * ">" - key - velue seprator, same as "=" in ini
+ * ">" - key - value seprator, same as "=" in ini
 
 ```
 [settings]
@@ -171,7 +173,7 @@ options:
   -o {png,jpg,bmp,tiff,tga,dds}, --output-format {png,jpg,bmp,tiff,tga,dds}
                         Output format
 ```
-If -config not defined, tries to find config.txt in cwd, if not found, (currently) works with hardcoded test config
+If -config not defined, packer tries to find config.txt in cwd, if not found, (currently) works with hardcoded test config
 
 ## Restrictions
 * All textures with same group name must be the same size. Up/downscale not supported. (currently)
