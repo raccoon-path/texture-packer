@@ -14,7 +14,7 @@
 #   _albedo_w_alpha: _albedo:rgb | _alpha:r 
 #       produces "texname_albedo_w_alpha" from r, g and b channels from "texname_albedo" and r channel of "texname_alpha")
 # "*" character after channel inverts it (e.q. _normal > _normal:rg*b inverts green channel for mytexture_normal.png if tool found it)
-
+# python D:\Repos\texture-packer\texture_packer.py
 [settings]
 src_dir > test-data/src
 dest_dir > test-data/dest

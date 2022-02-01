@@ -1,3 +1,4 @@
+import json
 import time
 from os import error
 from pathlib import Path
@@ -205,6 +206,7 @@ class Config:
         m_suf = sorted(sect["map suffixes"], key = lambda x: len(x), reverse = True) #sort long>short to avoid partially replaced suffixes
         ms = {sf[0]:("" if len(sf) < 2 else sf[1]) for sf in    [self._split_trim(x, self.ASSIGN_SIGN) for x in m_suf]}
         
+        self.map_suffixes = ms
         #parse packer map
         p_lines = sect["pack"]
         p_map={}
@@ -212,7 +214,7 @@ class Config:
             map_suff,map_data,*_ = self._split_trim(ln, self.ASSIGN_SIGN)
             p_map[map_suff] = self._parse_mapstr(map_data)
         self.packer = p_map
-        
+
         return self
 
     def save_to_file(self, path:str|Path):
@@ -283,7 +285,10 @@ class TexturePacker:
         for pth in paths:
             #print("--> "+str(pth))
             sf = self.get_file_suffix(pth.stem,suffixes)
-            if sf == None: continue
+
+            if sf == None:
+                print(str(pth)+" skipped from processing (has no valid suffix)")
+                continue
             
             grp_name = pth.relative_to(relative_to)
             grp_name = str(grp_name)[0: -len(sf)-len(grp_name.suffix)] 
@@ -355,9 +360,9 @@ class TexturePacker:
             exit(1)
         
         src_files = [fl for fl in src_dir.iterdir() if fl.suffix.lower() in config.extensions]
-        
+
         groups = self.get_groups(src_files, src_dir, config.map_suffixes)
-      
+        
         for grp_name in groups:
             tex_lookup = self.pack_material_stems(groups[grp_name], config.packer)
             
@@ -385,7 +390,6 @@ class TexturePacker:
                 tex_lookup[tex_suffix].save(save_path,config.output_format) #<---- SAVE FILES HERE
                 print("Save file: "+str(save_path))
 
-         
 
 if __name__ == "__main__":
 
