@@ -17,7 +17,7 @@ In Substance designer/painter you might customize channel layout and format for 
   <tr>
     <td>
         <p>tex1_Base_Color.png</p>
-        <p>tex1_DX_Normal.tiff</p>
+        <p>tex1_DX_Normal.tga</p>
         <p>tex1_Ambient_Occlusion.jpg</p>
         <p>tex1_Roughness.png</p>
         <p>tex1_Metallic</p>
@@ -143,7 +143,7 @@ Let's say you have a *group* of textures: **texname [_ao, _roughness, _metallic,
 
 Possible lines: 
 * **_orm > _ao:r | _roughness:r | _metallic:r** - produces "texname_orm" with 3 channel (r from r channel of "texname_ao", g from r channel "texname_roughness" and b from r channel of "texname_metallic").
-* **_normal_gl > _normal_dx:rg*b** -  produces "texname_normal_gl" with inverted g channel from "texname_normal".
+* **_normal_gl > _normal_dx:rg*b** -  produces "texname_normal_gl" with inverted g channel from "texname_normal_dx".
 * **_albedo_w_alpha: _albedo:rgb | _alpha:r** - produces "texname_albedo_w_alpha" from r, g and b channels from "texname_albedo" and r channel of "texname_alpha").
 * **_inv_order: _albedo:bgr** - produces texture "texname_inv_order" with inverted order of channels.
 
@@ -160,7 +160,7 @@ pip install numpy
 
 Run from command line.
 ```cmd
-python texture_packer.py [-h] [-c CONFIG] [-s SRC_DIR] [-d DEST_DIR] [-o {png,jpg,bmp,tiff,tga,dds}]
+python texture_packer.py [-h] [-c CONFIG] [-s SRC_DIR] [-d DEST_DIR] [-o {png,jpg,bmp,tga,dds}]
 
 options:
   -h, --help            show this help message and exit

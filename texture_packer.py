@@ -25,7 +25,7 @@ parser  = ArgumentParser(epilog = description)
 parser.add_argument("-c","--config", dest="config", default="config.txt", help="Path to config (relative cwd or absolute). Default 'config.txt' in cwd")
 parser.add_argument("-s", "--src", dest="src_dir", default=None, help="Path to directory with source textures (relative cwd or absolute)")
 parser.add_argument("-d","--dest", dest="dest_dir", default=None, help="Path to destination directory (relative cwd or absolute)")
-parser.add_argument("-o","--output-format", dest= "output_format", default=None, help="Output format", choices=["png","jpg","bmp","tiff","tga","dds"])
+parser.add_argument("-o","--output-format", dest= "output_format", default=None, help="Output format", choices=["png","jpg","bmp","tga","dds"])
 #parser.add_argument("-l","-local-config", dest= "local_config", action="store_true", default="false", help="Use local config (defined in -c or --config) in source directory")
 args = parser.parse_args()
 
