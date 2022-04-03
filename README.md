@@ -93,6 +93,8 @@ lowercase_names > true
 # save textures in PNG
 output_format > png
 
+# no owerwrite existing output textures
+owerwrite > false
 ```
 
 ### filters section
@@ -149,6 +151,9 @@ Possible lines:
 
 > " \* " character after channel inverts it ( _normal_gl > _normal_dx:rg*b inverts green channel for mytexture_normal.png if tool found it)
 
+## NO-OWERWRITE mode
+If run tool with --no-owerwrite param, all existing output textures will not be owerwritten. This useful for incremental texture packing. 
+
 ## Dependencies
 To work with texture_packer need python modules: Pillow, Numpy (for working with 16-bit gray input textures)
 ```python
@@ -160,7 +165,7 @@ pip install numpy
 
 Run from command line.
 ```cmd
-python texture_packer.py [-h] [-c CONFIG] [-s SRC_DIR] [-d DEST_DIR] [-o {png,jpg,bmp,tga,dds}]
+python texture_packer.py [-h] [-c CONFIG] [-s SRC_DIR] [-d DEST_DIR] [-o {png,jpg,bmp,tga,dds}] [--owerwrite | --no-owerwrite]
 
 options:
   -h, --help            show this help message and exit
@@ -170,8 +175,10 @@ options:
                         Path to directory with source textures (relative cwd or absolute)
   -d DEST_DIR, --dest DEST_DIR
                         Path to destination directory (relative cwd or absolute)
-  -o {png,jpg,bmp,tiff,tga,dds}, --output-format {png,jpg,bmp,tiff,tga,dds}
+  -o {png,jpg,bmp,tga,dds}, --output-format {png,jpg,bmp,tga,dds}
                         Output format
+  --owerwrite, --no-owerwrite
+                        Owerwrite already existing packed output textures. (default: True)
 ```
 If -config not defined, packer tries to find config.txt in cwd, if not found, (currently) works with hardcoded test config
 

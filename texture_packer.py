@@ -1,7 +1,10 @@
+import argparse
 import json
+import string
 import time
 from os import error
 from pathlib import Path
+from xmlrpc.client import Boolean
 from PIL.Image import Image
 from PIL import Image as Img
 from PIL import ImageChops
@@ -11,12 +14,14 @@ from argparse import ArgumentParser
 #TODO store relative path (to src_dir) in group_name. To implement of scan subdirs
 #TODO add glob search and scan subdirs
 #TODO ignore case in filenames (preferred to save file name in lowercase)
+#TODO refactor all when complete functionality achieved
 
 description = '''\
-This texture packer is tool for batch renaming and packing images to textures with custom channel mapping.
+This texture packer is tool for batch renaming and packing images to textures with custom channel layout.
 |Implemented:
     Packing images to texture channels,
     Remapping texture suffixes.
+    Pack only unexisting output textures (optional).
 |Not implemented:
     Recursive directory scanning, glob syntax,
 '''
@@ -26,6 +31,7 @@ parser.add_argument("-c","--config", dest="config", default="config.txt", help="
 parser.add_argument("-s", "--src", dest="src_dir", default=None, help="Path to directory with source textures (relative cwd or absolute)")
 parser.add_argument("-d","--dest", dest="dest_dir", default=None, help="Path to destination directory (relative cwd or absolute)")
 parser.add_argument("-o","--output-format", dest= "output_format", default=None, help="Output format", choices=["png","jpg","bmp","tga","dds"])
+parser.add_argument("--owerwrite", type=bool, dest="owerwrite", action=argparse.BooleanOptionalAction, help = "Owerwrite already existing packed output textures.")
 #parser.add_argument("-l","-local-config", dest= "local_config", action="store_true", default="false", help="Use local config (defined in -c or --config) in source directory")
 args = parser.parse_args()
 
@@ -80,12 +86,12 @@ class Config:
         "*":4
     }
     
-    #This is default values for my texture packing pipeline for Godot orm materials, all this params may be overriden from config defined in -c --config param
+    #This is default values for my texture packing pipeline for Godot (albedo, orm, gl_normal, height), all this params may be overriden from config file defined in -c --config param
     src_dir = "" #may be overriden from -s --src param
     dest_dir = "dest" #may be overriden from -d --dest param
     lowercase_names = False
     output_format = "png" #may be overriden -o --output-format param
-
+    owerwrite = True #ADDED, True to preserve old bahavior
     extensions=[".png",".jpg",".tga"]
     map_suffixes = {
         "_base_color":"_albedo",
@@ -190,7 +196,7 @@ class Config:
         try:
             lines = [ln.strip() for ln in file.read_text().splitlines()]
         except error:
-            print("Config file: "+str(file)+" not loaded")
+            print("[!] Config file: "+str(file)+" not loaded")
             return self
         sect = self._get_sections(lines)
         
@@ -225,7 +231,7 @@ class Config:
         data.append("save_format > "+str(self.save_format))
         data.append("src_dir > "+str(self.src_dir))
         data.append("dest_dir > "+str(self.dest_dir))
-
+        data.append("owerwrite >"+ str(self.owerwrite))
         data.append("[filters]")
         for itm in self.extensions:
             data.append(itm)
@@ -265,7 +271,7 @@ class TexturePacker:
         try:
             return Img.open(path)
         except error:
-            print("Image <"+str(path)+"> not loaded.")
+            print("[!] Image <"+str(path)+"> not loaded.")
             return None
 
     def get_file_suffix(self, name:str, suffixes:list[str]):
@@ -280,6 +286,22 @@ class TexturePacker:
         return suffix if mapped == "" else mapped
 
     def get_groups(self, paths:list[Path], relative_to:Path, suffixes_map:dict[str,str])->dict[str,dict[str:Path]]:
+        '''
+        output:
+        {
+            group_name_1:{
+                _suffix1:path1,
+                ...,
+                _suffix_n:path_n,
+            },
+
+            ...,
+
+            group_name_n{
+                ...
+            }
+        }
+        '''
         suffixes = suffixes_map.keys() #TODO ignore case apply this
         groups = {}
         for pth in paths:
@@ -287,7 +309,7 @@ class TexturePacker:
             sf = self.get_file_suffix(pth.stem,suffixes)
 
             if sf == None:
-                print(str(pth)+" skipped from processing (has no valid suffix)")
+                print("[-] Skip: "+str(pth)+" (has no valid suffix, described in [map suffixes] section of config)")
                 continue
             
             grp_name = pth.relative_to(relative_to)
@@ -300,7 +322,17 @@ class TexturePacker:
                 groups[grp_name] = itms
             itms[self.get_mapped_suffix(sf,suffixes_map)] = pth
         return groups
-    
+
+    def get_filtered_packer_config(self, group_name:str, target_dir:Path)->dict[str, list[PackChItem]]:
+        pk_conf = {}
+        for pk_suffix in config.packer:
+            excl_path = target_dir.joinpath(group_name + pk_suffix+"."+config.output_format)
+            if not excl_path.exists():
+                pk_conf[pk_suffix]=config.packer[pk_suffix]
+            else:
+                print("[-] Skip: " + str(excl_path) + " (file exists)")
+        return pk_conf
+
     def load_texture_bands(self, group_items:dict[str,Path], config:dict[list[PackChItem]])->dict[str,list[Image]]:
         loaded:dict[str,list[Image]] = {}
         for pack_grp in config:
@@ -356,7 +388,7 @@ class TexturePacker:
         dest_is_src = src_dir == target_dir
         
         if not src_dir.exists():
-            print("Src directory <"+str(src_dir)+"> does not exists")
+            print("[!] Src directory <"+str(src_dir)+"> does not exists")
             exit(1)
         
         src_files = [fl for fl in src_dir.iterdir() if fl.suffix.lower() in config.extensions]
@@ -364,11 +396,13 @@ class TexturePacker:
         groups = self.get_groups(src_files, src_dir, config.map_suffixes)
         
         for grp_name in groups:
-            tex_lookup = self.pack_material_stems(groups[grp_name], config.packer)
+            # Filter pack items is (owerwrite==True)
+            pk_conf = config.packer if config.owerwrite else self.get_filtered_packer_config(grp_name, target_dir)
+            tex_lookup = self.pack_material_stems(groups[grp_name], pk_conf)
             
             t_dir = target_dir.joinpath(grp_name).parent
             if not t_dir.exists():
-                print("Directory <"+str(t_dir)+"> does not exists, create it..")
+                print("[!] Directory <"+str(t_dir)+"> does not exists, create it..")
                 t_dir.mkdir(parents=True)
             
             #save packed textures
@@ -377,19 +411,18 @@ class TexturePacker:
                 
                 #prevent silent overwrite sources
                 if dest_is_src and save_path.exists():
-                    print("OVERWRITE SOURCE FILE: <"+str(save_path)+"> ?")
-                    print("[Y] [ENTER] to overwrite") 
+                    print("[?] OVERWRITE SOURCE FILE: <"+str(save_path)+"> ?")
+                    print(" -> [Y] [ENTER] to overwrite") 
                     answ = input()   
                     if answ.lower() !="y":
-                        print("Cancel")
+                        print("[!] Cancel")
                         continue
                 #lowercase names on save
                 if config.lowercase_names:
                     save_path = str(save_path).lower()
-                
-                tex_lookup[tex_suffix].save(save_path,config.output_format) #<---- SAVE FILES HERE
-                print("Save file: "+str(save_path))
-
+                if tex_lookup[tex_suffix] != None: #if output texture suffix described in config.packer but no source texture channels exists, <None> goes here, nasty bug fixed!
+                    tex_lookup[tex_suffix].save(save_path,config.output_format) # finally, save the file
+                    print("[+] Save: "+str(save_path))
 
 if __name__ == "__main__":
 
@@ -397,12 +430,13 @@ if __name__ == "__main__":
     tmr = time.perf_counter()
     config = Config().load_from_file(args.config)
     
-    #override paths from commandline
+    #override config params from commandline
     config.override_params(args.__dict__)
     
-    #exit()
-    #convert to absolute
-    
+    if config.owerwrite:
+        print("[!] OWERWRITE mode: all output textures will be owerwritten.")
+    else:
+        print("[!] NO-OWERWRITE mode: existing files will not owerwritten")
 
     packer = TexturePacker()
     packer.pack_textures(config)
