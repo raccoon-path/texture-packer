@@ -11,11 +11,6 @@ from PIL import ImageChops
 import numpy as np
 from argparse import ArgumentParser
 
-#TODO store relative path (to src_dir) in group_name. To implement of scan subdirs
-#TODO add glob search and scan subdirs
-#TODO ignore case in filenames (preferred to save file name in lowercase)
-#TODO refactor all when complete functionality achieved
-
 description = '''\
 This texture packer is tool for batch renaming and packing images to textures with custom channel layout.
 |Implemented:
@@ -256,13 +251,18 @@ class Config:
         
 
 class TexturePacker:
+    
+    SUFFIX_PLACEHOLDER = "@S@"
+    
     IMG_MODES_MAP = {
         1:"L",
         3:"RGB",
         4:"RGBA"
     }
+
     def __init__(self) -> None:
         pass
+    
     def convert_mode_i_to_l(self, img:Image)->Image:
         array = np.uint8(np.array(img) / 256)
         return Img.fromarray(array)
@@ -274,12 +274,13 @@ class TexturePacker:
             print("[!] Image <"+str(path)+"> not loaded.")
             return None
 
-    def get_file_suffix(self, name:str, suffixes:list[str]):
-        name = name.lower()                             #TODO ignore case 
+    def get_file_suffix_index(self, name:str, suffixes:list[str] )-> tuple[str, int]:
+        name = name.lower()
         for s in suffixes:
-            if name.endswith(s):
-                return s
-        return None
+            index = name.rfind(s)
+            if index > -1:
+                return s, index
+        return None, -1
 
     def get_mapped_suffix(self,suffix:str, suffix_map:dict[str,str])->str:
         mapped = suffix_map.get(suffix,"")
@@ -302,19 +303,17 @@ class TexturePacker:
             }
         }
         '''
-        suffixes = suffixes_map.keys() #TODO ignore case apply this
+        suffixes = suffixes_map.keys()
         groups = {}
         for pth in paths:
-            #print("--> "+str(pth))
-            sf = self.get_file_suffix(pth.stem,suffixes)
+            sf, sf_index = self.get_file_suffix_index(pth.stem,suffixes)
 
             if sf == None:
                 print("[-] Skip: "+str(pth)+" (has no valid suffix, described in [map suffixes] section of config)")
                 continue
             
-            grp_name = pth.relative_to(relative_to)
-            grp_name = str(grp_name)[0: -len(sf)-len(grp_name.suffix)] 
-            #print(grp_name)
+            grp_name = str(pth.relative_to(relative_to)).rsplit(".",1)[0]
+            grp_name = grp_name[ :sf_index] + self.SUFFIX_PLACEHOLDER + grp_name[sf_index + len(sf): ]
             
             itms = groups.get(grp_name, None)
             if itms == None:
@@ -407,8 +406,7 @@ class TexturePacker:
             
             #save packed textures
             for tex_suffix in tex_lookup:
-                save_path = target_dir.joinpath(grp_name+tex_suffix+"."+config.output_format).resolve()
-                
+                save_path = target_dir.joinpath(grp_name.replace(self.SUFFIX_PLACEHOLDER, tex_suffix)+"."+config.output_format).resolve()
                 #prevent silent overwrite sources
                 if dest_is_src and save_path.exists():
                     print("[?] OVERWRITE SOURCE FILE: <"+str(save_path)+"> ?")
